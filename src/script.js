@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import GUI from "lil-gui";
-import CANNON from "cannon";
+import * as CANNON from "cannon";
 
 /**
  * Debug
@@ -26,6 +26,22 @@ debugObject.createBox = () => {
   });
 };
 gui.add(debugObject, "createBox");
+
+debugObject.createCylinder = () => {
+  createCylinder(
+    Math.random() * 0.25 + 0.1, // radiusTop
+    Math.random() * 0.25 + 0.1, // radiusBottom
+    Math.random() * 2, // height
+    16, // numSegments
+    {
+      // position
+      x: (Math.random() - 0.5) * 3,
+      y: 3,
+      z: (Math.random() - 0.5) * 3,
+    }
+  );
+};
+gui.add(debugObject, "createCylinder");
 
 // reset
 debugObject.reset = () => {
@@ -268,6 +284,61 @@ const createBox = (width, height, depth, position) => {
   });
 };
 createBox(2, 2, 2, 2);
+
+// cylinder-------------------------------------------------------------
+const cylinderGeometry = new THREE.CylinderGeometry(5, 5, 20, 32);
+const cylinderMaterial = new THREE.MeshStandardMaterial({
+  metalness: 0.4,
+  roughness: 0.3,
+  envMap: environmentMapTexture,
+});
+
+const createCylinder = (
+  radiusTop,
+  radiusBottom,
+  height,
+  numSegments,
+  position
+) => {
+  // THREE.JS Mesh
+  const geometry = new THREE.CylinderGeometry(
+    radiusTop,
+    radiusBottom,
+    height,
+    numSegments
+  );
+  const mesh = new THREE.Mesh(geometry, cylinderMaterial);
+  mesh.castShadow = true;
+  mesh.position.copy(position);
+  scene.add(mesh);
+
+  // CANNON.JS Body
+  const shape = new CANNON.Cylinder(
+    radiusTop,
+    radiusBottom,
+    height,
+    numSegments
+  );
+
+  // Fix cylinder orientation by rotating it
+  const quaternion = new CANNON.Quaternion();
+  quaternion.setFromEuler(-Math.PI / 2, 0, 0); // Rotate cylinder to align it correctly
+
+  const body = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(position.x, position.y, position.z),
+    shape: shape,
+    material: defaultMaterial,
+  });
+  body.quaternion = quaternion; // Apply the rotation quaternion
+  body.addEventListener("collide", playHitSound);
+  world.addBody(body);
+
+  // Save to objects to update
+  objectToUpdate.push({ mesh, body });
+};
+
+// cylinder------------------------------------------------
 
 /**
  * Animate
